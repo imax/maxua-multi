@@ -78,6 +78,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/welcome.html'));
 });
 
+app.get(['/signup', '/discover'], (req, res) => {
+  res.status(200).send('<code>Not yet ;)</code>');
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -136,12 +140,6 @@ app.use('/images', express.static(path.join(__dirname, '../public/images'), {
 // Catch-all fallback for other static files (e.g. favicon, robots.txt)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// My substack newsletter archive
-
-app.get(['/newsletter_archive/'], (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/newsletter_archive/index.html'));
-});
-
 // Serve static HTML files from public directory
 app.get('/:page.html', (req, res, next) => {
   const page = req.params.page;
@@ -161,23 +159,6 @@ app.get('/:page.html', (req, res, next) => {
 // Special case for root-level admin and other pages
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/admin.html'));
-});
-
-app.get('/test_auth', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/test_auth.html'));
-});
-
-// Add routes for any other pages that need direct handling
-app.get('/books', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/books.html'));
-});
-
-app.get('/about', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/about.html'));
-});
-
-app.get('/zsu', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/zsu.html'));
 });
 
 // Create adapter for SSR page handlers
