@@ -23,7 +23,6 @@
           
           <!-- Post meta with proper padding -->
           <div style="margin-top: 15px; padding: 0 15px 0 0; color: #555; font-size: 14px; font-style: italic; text-align: left;">
-            {{post.formatted_date}}
             {{#if topicName}}
             <span style="display: inline-block; background-color: #f0f4f8; color: #0366d6; border-radius: 12px; font-size: 14px; padding: 2px 10px; margin-left: 5px; text-decoration: none; font-weight: 500; font-style: normal;">#{{topicName}}</span>
             {{/if}}
@@ -31,7 +30,9 @@
           
           <!-- Discussion link with proper padding -->
           <div style="margin-top: 15px; padding: 0 15px 0 0; text-align: left;">
-            <a href="{{postUrl}}" style="color: #0366d6; text-decoration: none; font-weight: 600; font-size: 16px;">Обговорення</a>
+            <b>
+            <a href="{{postUrl}}" style="color: #0366d6; text-decoration: none; font-weight: 600; font-size: 16px;">{{postUrl}}</a>
+            </b>
           </div>
           
           <!-- Footer with proper padding -->
