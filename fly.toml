@@ -1,9 +1,6 @@
-# fly.toml app configuration file generated for maxua-api on 2025-04-23T07:23:21+03:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
+# fly.toml app configuration file 
 
-app = 'maxua-api'
+app = 'maxua-multi'
 primary_region = 'waw'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'

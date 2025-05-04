@@ -74,6 +74,10 @@ const checkDatabaseConnection = async () => {
 checkDatabaseConnection();
 setInterval(checkDatabaseConnection, 60000); // Check every minute
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/welcome.html'));
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
