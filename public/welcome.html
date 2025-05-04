@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>maxua-multi | Start your own microblog</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* Welcome page specific styles */
+    .welcome-container {
+      max-width: 650px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .welcome-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .welcome-header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .welcome-header p {
+      color: var(--color-secondary-text);
+      font-size: 1.2rem;
+    }
+
+    .welcome-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .welcome-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .feature-list {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .feature-list li {
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+
+    .feature-list li:before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      color: var(--color-accent);
+      font-weight: bold;
+    }
+
+    .ideas-section {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 1.5rem;
+      border: 1px solid #eee;
+    }
+
+    .ideas-list {
+      list-style-type: none;
+      padding: 0;
+      column-count: 2;
+      column-gap: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      .ideas-list {
+        column-count: 1;
+      }
+      
+      .welcome-buttons {
+        flex-direction: column;
+      }
+      
+      .welcome-button {
+        width: 100%;
+        text-align: center;
+      }
+    }
+
+    .ideas-list li {
+      margin-bottom: 0.75rem;
+      break-inside: avoid;
+      position: relative;
+      padding-left: 1.5rem;
+    }
+
+    .ideas-list li:before {
+      content: '○';
+      position: absolute;
+      left: 0;
+      color: var(--color-accent);
+    }
+
+    .open-source-note {
+      margin-top: 2rem;
+      padding: 1rem;
+      border-radius: 8px;
+      background-color: #f0f4f8;
+      border: 1px solid #d0e0f0;
+      text-align: center;
+    }
+
+    .open-source-note a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .open-source-note a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <main class="welcome-container">
+    <div class="welcome-header">
+      <h1>maxua-multi</h1>
+      <p>A simple, semi-private microblogging platform</p>
+    </div>
+
+    <div class="welcome-buttons">
+      <a href="/signup" class="welcome-button">Sign up</a> /
+      <a href="/discover" class="welcome-button secondary">Discover</a>
+    </div>
+
+    <div class="welcome-section">
+      <h2>What is this?</h2>
+      <p class="intro">For people tired of IG, Twitter/X, Substack and other mainstream platforms.</p>
+      
+      <h3>Semi-private by design</h3>
+      <ul class="feature-list">
+        <li>You can opt-in to let your posts appear on the Discover page—or not, and let only people who know your handle find you.</li>
+        <li>Comments are private by default, only you see them. You can publish select comments plus your reply via "Pinned feedback".</li>
+        <li>Per-post visibility: "protected" means only people who are already your subscribers will see that post. New subscribers or people visiting your page directly won't see it.</li>
+      </ul>
+    </div>
+
+    <div class="welcome-section">
+      <h2>Features</h2>
+      <ul class="feature-list">
+        <li>Simple compose page and timeline of your posts</li>
+        <li>Email subscription and weekly digest for readers</li>
+        <li>Reposts to Bluesky and Telegram for more distribution (opt-in)</li>
+      </ul>
+    </div>
+
+    <div class="welcome-section ideas-section">
+      <h2>Coming Soon</h2>
+      <ul class="ideas-list">
+        <li>Analytics ("3 people read this")</li>
+        <li>Upvotes for the Discover page</li>
+        <li>Rich media attachments: HTML, images, links, audio, etc.</li>
+        <li>Post visibility: open, "protected", and "only me"</li>
+        <li>Custom styles and layout</li>
+        <li>Custom domains</li>
+        <li>Whatever else we build together!</li>
+      </ul>
+    </div>
+
+    <div class="open-source-note">
+      <p>This platform is open source and built with the community. <a href="https://github.com/imax/maxua-multi">Join us on GitHub</a>.</p>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2025 maxua-multi
+  </footer>
+</body>
+</html>
