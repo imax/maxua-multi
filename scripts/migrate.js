@@ -16,10 +16,10 @@ async function run() {
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS migrations (
-      id SERIAL PRIMARY KEY,
-      filename TEXT UNIQUE NOT NULL,
-      run_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-    )
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL UNIQUE,
+        run_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   for (const file of files) {

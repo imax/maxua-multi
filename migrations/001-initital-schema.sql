@@ -92,8 +92,9 @@ CREATE TABLE sites (
 );
 
 -- Migrations!
-
-CREATE TABLE migrations (
+-- the table should be created automatiicall by the migrate script
+-- this one here is mostly for reference
+CREATE TABLE IF NOT EXISTS migrations (
     id SERIAL PRIMARY KEY,
     filename TEXT NOT NULL UNIQUE,
     run_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
