@@ -323,12 +323,71 @@ function formatTextToHtml(text) {
     .join('\n');
 }
 
+/**
+ * Create a verification code and send it via email
+ * @param {string} handle - User's handle
+ * @param {string} email - User's email
+ * @param {string} purpose - 'signup' or 'login' to customize the email
+ * @returns {Promise<string>} The generated verification code
+ */
+async function sendOTPEmail(handle, email, purpose = 'signup') {
+
+  console.log("sendOTPEmail", handle, email, purpose);
+
+  // Generate verification code and set expiration (15 minutes)
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  
+  // Store in pending_signups
+  await pool.query(
+    'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
+    [handle, email, verificationCode, expiresAt]
+  );
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Verification code for ${purpose}: ${handle}, ${email}, ${verificationCode}`);
+  }
+  
+  // Customize email based on purpose
+  const title = purpose === 'signup' 
+    ? 'Complete your signup for maxua.com'
+    : 'Log in to maxua.com';
+    
+  const subject = purpose === 'signup'
+    ? 'Your verification code'
+    : 'Your login verification code';
+  
+  // Send verification email
+  const emailHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>${title}</h2>
+      <p>Your verification code is:</p>
+      <div style="font-size: 24px; font-weight: bold; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; letter-spacing: 4px;">
+        ${verificationCode}
+      </div>
+      <p style="color: #666; font-size: 14px; margin-top: 20px;">
+        This code expires in 15 minutes.<br>
+        If you didn't request this, you can safely ignore this email.
+      </p>
+    </div>
+  `;
+  
+  await sendEmail({
+    to: email,
+    subject,
+    text: `Your verification code is: ${verificationCode}\n\nThis code expires in 15 minutes.`,
+    html: emailHtml
+  });
+  
+  return verificationCode;
+}
 
 module.exports = { 
   pool, 
   wrap, 
   sendEmail,
   createSession,
+  sendOTPEmail,
   rateLimit,
   getCorsHeaders, 
   getETagHeaders,

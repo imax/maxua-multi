@@ -134,9 +134,8 @@
       <form class="login-form" @submit.prevent="handleSubmit()">
         <div :class="{ 'hidden': showVerification }">
           <div class="form-field">
-            <label for="user-handle">Your handle</label>
-            <input type="text" id="user-handle" x-model="handle" placeholder="mickey7" 
-                   @input="handle = handle.toLowerCase()">
+            <label for="user-identifier">Your email or user handle</label>
+            <input type="text" id="user-identifier" x-model="identifier" placeholder="mickey7">
           </div>
         </div>
         
@@ -144,7 +143,7 @@
           <div class="form-field">
             <label for="verify-code">Verification Code</label>
             <div class="help-text">Enter the 6-digit code sent to your email</div>
-            <input type="text" id="verify-code" x-model="verificationCode" placeholder="123456">
+            <input type="text" id="verify-code" x-model="verificationCode">
           </div>
         </div>
         
@@ -170,8 +169,10 @@
   <script>
     function loginForm() {
       return {
-        handle: '',
+        identifier: '', // Combined field for either handle or email
         verificationCode: '',
+        handle: '',     // Will store the handle returned from API
+        email: '',      // Will store the email returned from API
         loading: false,
         status: '',
         statusType: '',
@@ -184,10 +185,9 @@
           return this.showVerification ? 'Log In' : 'Send Login Code';
         },
         
-        validateHandle() {
-          if (!this.handle) return { valid: false, message: 'Handle is required' };
-          if (!/^[a-z0-9_-]+$/.test(this.handle)) {
-            return { valid: false, message: 'Handle can only contain lowercase letters, numbers, hyphens and underscores' };
+        validateIdentifier() {
+          if (!this.identifier) {
+            return { valid: false, message: 'Handle or email is required' };
           }
           return { valid: true };
         },
@@ -201,9 +201,9 @@
         },
         
         async requestLoginCode() {
-          const handleValidation = this.validateHandle();
-          if (!handleValidation.valid) {
-            this.status = handleValidation.message;
+          const validation = this.validateIdentifier();
+          if (!validation.valid) {
+            this.status = validation.message;
             this.statusType = 'error';
             return;
           }
@@ -212,13 +212,17 @@
           this.status = '';
           
           try {
-            // Request a login code - we'll need to update the backend to handle this
+            // Determine if identifier is an email or handle
+            const isEmail = this.identifier.includes('@');
+            const payload = isEmail 
+              ? { email: this.identifier } 
+              : { handle: this.identifier };
+            
+            // Request a login code
             const response = await fetch('/api/auth/request-code', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                handle: this.handle
-              })
+              body: JSON.stringify(payload)
             });
             
             const result = await response.json();
@@ -227,6 +231,10 @@
               this.status = 'Login code sent! Check your email and enter it below.';
               this.statusType = 'success';
               this.showVerification = true;
+              
+              // Store both handle and email for the next step
+              if (result.handle) this.handle = result.handle;
+              if (result.email) this.email = result.email;
             } else {
               this.status = result.error || 'Unable to send login code. Please try again.';
               this.statusType = 'error';
@@ -250,11 +258,13 @@
           this.status = '';
           
           try {
+            // Use the returned handle and code
             const response = await fetch('/api/auth/login', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 handle: this.handle,
+                email: this.email, // Including email is helpful for the backend
                 code: this.verificationCode
               })
             });

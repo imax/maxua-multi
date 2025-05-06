@@ -1,10 +1,50 @@
 // server/routes/auth.js
 const express = require('express');
 const router = express.Router();
-const { pool, rateLimiterMiddleware, createSession } = require('../utils');
+const { pool, rateLimiterMiddleware, createSession, sendOTPEmail } = require('../utils');
 const { v4: uuidv4 } = require('uuid');
 
-// Login route - uses the existing signup verification or can be standalone
+router.post('/request-code', rateLimiterMiddleware, async (req, res) => {
+  try {
+    const { handle, email } = req.body;
+    
+    // Validate input - either handle or email is required
+    if (!handle && !email) {
+      return res.status(400).json({ error: 'Handle or email is required' });
+    }
+
+    // Normalize handle if provided
+    const normalizedHandle = handle ? handle.toLowerCase() : null;
+    
+    // Find the user
+    const userQuery = normalizedHandle 
+      ? 'SELECT id, handle, email FROM users WHERE handle = $1'
+      : 'SELECT id, handle, email FROM users WHERE email = $1';
+    
+    const userParam = normalizedHandle || email;
+    
+    const userResult = await pool.query(userQuery, [userParam]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+
+    await sendOTPEmail(user.handle, user.email, 'login');
+    
+    return res.json({ 
+      success: true, 
+      message: 'Verification code sent to your email',
+      email: user.email,
+      handle: user.handle 
+    });
+  } catch (error) {
+    console.error('Error requesting login code:', error);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.post('/login', rateLimiterMiddleware, async (req, res) => {
   try {
     const { handle, email, code } = req.body;

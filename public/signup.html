@@ -120,6 +120,20 @@
     .hidden {
       display: none;
     }
+    .signup-link {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--color-secondary-text);
+    }
+    
+    .signup-link a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+    
+    .signup-link a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -159,6 +173,9 @@
 
         <div class="status-message" x-show="status" :class="statusType" x-text="status"></div>
       </form>
+      <div class="signup-link">
+        <p>Already have an account? <a href="/login">Log in</a></p>
+      </div>
     </div>
   </main>
   

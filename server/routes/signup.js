@@ -1,12 +1,7 @@
 // server/routes/signup.js
 const express = require('express');
 const router = express.Router();
-const { pool, rateLimiterMiddleware, sendEmail, createSession } = require('../utils');
-
-// Generate a 6-digit verification code
-function generateVerificationCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+const { pool, rateLimiterMiddleware, createSession, sendOTPEmail } = require('../utils');
 
 // Check if a handle is available
 router.get('/check-handle/:handle', rateLimiterMiddleware, async (req, res) => {
@@ -68,39 +63,7 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Verification already in progress for this handle or email' });
     }
     
-    // Generate verification code and set expiration (15 minutes)
-    const verificationCode = generateVerificationCode();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-    
-    // Store in pending_signups
-    await pool.query(
-      'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
-      [normalizedHandle, email, verificationCode, expiresAt]
-    );
-
-    console.log("pending_signups: ", normalizedHandle, email, verificationCode);
-    
-    // Send verification email
-    const emailHtml = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Complete your signup for maxua.com</h2>
-        <p>Your verification code is:</p>
-        <div style="font-size: 24px; font-weight: bold; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; letter-spacing: 4px;">
-          ${verificationCode}
-        </div>
-        <p style="color: #666; font-size: 14px; margin-top: 20px;">
-          This code expires in 15 minutes.<br>
-          If you didn't request this, you can safely ignore this email.
-        </p>
-      </div>
-    `;
-    
-    await sendEmail({
-      to: email,
-      subject: 'Your verification code',
-      text: `Your verification code is: ${verificationCode}\n\nThis code expires in 15 minutes.`,
-      html: emailHtml
-    });
+    await sendOTPEmail(normalizedHandle, email, 'signup');
     
     return res.json({ 
       success: true, 
