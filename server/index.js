@@ -4,7 +4,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const Sentry = require('@sentry/node');
-const { pool, rateLimiterMiddleware, authMiddleware } = require('./utils');
+const { pool, rateLimiterMiddleware, authPageRedirectMiddleware } = require('./utils');
 
 // Import route modules
 const authRoutes = require('./routes/auth');
@@ -74,7 +74,7 @@ const checkDatabaseConnection = async () => {
 checkDatabaseConnection();
 setInterval(checkDatabaseConnection, 60000); // Check every minute
 
-app.get('/', (req, res) => {
+app.get('/', authPageRedirectMiddleware, (req, res) => {
   const host = req.headers.host;
 
   if (host.includes('ultrathink.me')) {
@@ -84,17 +84,31 @@ app.get('/', (req, res) => {
   }
 });
 
-
-app.get('/signup', (req, res) => {
+app.get('/signup', authPageRedirectMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/signup.html'));
 });
 
-app.get('/login', (req, res) => {
+app.get('/login', authPageRedirectMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/login.html'));
 });
 
-app.get(['/signup', '/discover'], (req, res) => {
+app.get('/discover', (req, res) => {
   res.status(200).send('<code>Not yet ;)</code>');
+});
+
+app.get('/logout', async (req, res) => {
+  const sessionId = req.cookies?.session;
+  
+  if (sessionId) {
+    try {
+      await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
+    } catch (error) {
+      console.error('Error clearing session:', error);
+    }
+  }
+  
+  res.clearCookie('session');
+  res.redirect('/?logout_ok');
 });
 
 app.get('/test-auth', async (req, res) => {
@@ -217,6 +231,35 @@ app.get('/:page.html', (req, res, next) => {
     // File exists, send it
     res.sendFile(filePath);
   });
+});
+
+
+// Catch-all for potential user pages
+app.get('/:handle', async (req, res, next) => {
+  const handle = req.params.handle;
+  
+  try {
+    // Check if user exists
+    const result = await pool.query(
+      'SELECT 1 FROM users WHERE handle = $1',
+      [handle]
+    );
+    
+    if (result.rows.length > 0) {
+      // User exists, show placeholder for now
+      return res.status(200).send('<code>User page coming soon ;)</code>');
+    }
+    // User doesn't exist, continue to next route (will likely be 404)
+    return next();
+  } catch (error) {
+    console.error('Error checking user handle:', error);
+    res.status(500).send('Server error');
+  }
+});
+
+// 404 handler - place this after all other routes
+app.use((req, res) => {
+  res.status(404).send('<h1>404 - Not Found</h1>');
 });
 
 // Create adapter for SSR page handlers

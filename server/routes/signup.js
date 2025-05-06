@@ -3,6 +3,17 @@ const express = require('express');
 const router = express.Router();
 const { pool, rateLimiterMiddleware, createSession, sendOTPEmail } = require('../utils');
 
+// List of reserved handles that cannot be used by users
+const RESERVED_HANDLES = [
+  'admin', 'about', 'login', 'logout', 'signup', 'api', 
+  'compose', 'settings', 'profile', 'discover', 'search',
+  'explore', 'dashboard', 't', 'p', 'help', 'support',
+  'privacy', 'terms', 'tos', 'reset', 'password', 'blog',
+  'tag', 'tags', 'topic', 'topics', 'post', 'posts',
+  'feed', 'rss', 'xml', 'sitemap', 'robots', 'static',
+  'public', 'assets', 'images', 'css', 'js', 'img'
+];
+
 // Check if a handle is available
 router.get('/check-handle/:handle', rateLimiterMiddleware, async (req, res) => {
   try {
@@ -47,6 +58,11 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
       return res.status(400).json({ 
         error: 'Handle can only contain lowercase letters, numbers, hyphens and underscores' 
       });
+    }
+    
+    // Check if handle is reserved
+    if (RESERVED_HANDLES.includes(normalizedHandle)) {
+      return res.status(400).json({ error: 'This handle is cannot be used' });
     }
     
     // Check if handle or email is already taken

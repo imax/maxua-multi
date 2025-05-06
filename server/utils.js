@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const Sentry = require('@sentry/node');
 const { Pool } = require('pg');
 
+const { v4: uuidv4 } = require('uuid');
+
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -26,6 +28,43 @@ const pool = new Pool({
   }
 });
 
+/**
+ * Check if a user is already logged in and get their handle
+ * @param {string} sessionId - The session ID from cookies
+ * @returns {Promise<string|null>} - The user's handle if logged in, null otherwise
+ */
+async function getLoggedInUserHandle(sessionId) {
+  if (!sessionId) return null;
+  
+  try {
+    const result = await pool.query(
+      `SELECT u.handle FROM sessions s 
+       JOIN users u ON s.user_id = u.id 
+       WHERE s.id = $1 AND s.expires_at > NOW()`,
+      [sessionId]
+    );
+    
+    return result.rows.length > 0 ? result.rows[0].handle : null;
+  } catch (error) {
+    console.error('Error checking session:', error);
+    return null;
+  }
+}
+
+function authPageRedirectMiddleware(req, res, next) {
+  getLoggedInUserHandle(req.cookies?.session)
+    .then(handle => {
+      if (handle) {
+        return res.redirect(`/${handle}`);
+      }
+      next();
+    })
+    .catch(error => {
+      console.error('Error in auth redirect middleware:', error);
+      next(); // Continue to the page even if there's an error checking auth
+    });
+}
+
 const authMiddleware = async (req, res, next) => {
   try {
     const sessionId = req.cookies?.session;
@@ -35,7 +74,10 @@ const authMiddleware = async (req, res, next) => {
     }
     
     const result = await pool.query(
-      'SELECT user_id FROM sessions WHERE id = $1 AND expires_at > NOW()',
+      `SELECT s.user_id, u.handle 
+       FROM sessions s 
+       JOIN users u ON s.user_id = u.id 
+       WHERE s.id = $1 AND s.expires_at > NOW()`,
       [sessionId]
     );
     
@@ -45,15 +87,13 @@ const authMiddleware = async (req, res, next) => {
     }
     
     req.userId = result.rows[0].user_id;
+    req.userHandle = result.rows[0].handle;
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
     return res.status(500).json({ error: 'Auth error' });
   }
 };
-
-// server/utils.js - add session creation function
-const { v4: uuidv4 } = require('uuid');
 
 /**
  * Create a session for a user and set the cookie
@@ -82,6 +122,65 @@ async function createSession(userId, res, deviceInfo = 'Unknown device') {
   });
   
   return sessionId;
+}
+
+/**
+ * Create a verification code and send it via email
+ * @param {string} handle - User's handle
+ * @param {string} email - User's email
+ * @param {string} purpose - 'signup' or 'login' to customize the email
+ * @returns {Promise<string>} The generated verification code
+ */
+async function sendOTPEmail(handle, email, purpose = 'signup') {
+
+  console.log("sendOTPEmail", handle, email, purpose);
+
+  // Generate verification code and set expiration (15 minutes)
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  
+  // Store in pending_signups
+  await pool.query(
+    'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
+    [handle, email, verificationCode, expiresAt]
+  );
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Verification code for ${purpose}: ${handle}, ${email}, ${verificationCode}`);
+  }
+  
+  // Customize email based on purpose
+  const title = purpose === 'signup' 
+    ? 'Complete your signup for maxua.com'
+    : 'Log in to maxua.com';
+    
+  const subject = purpose === 'signup'
+    ? 'Your verification code'
+    : 'Your login verification code';
+  
+  // Send verification email
+  const emailHtml = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>${title}</h2>
+      <p>Your verification code is:</p>
+      <div style="font-size: 24px; font-weight: bold; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; letter-spacing: 4px;">
+        ${verificationCode}
+      </div>
+      <p style="color: #666; font-size: 14px; margin-top: 20px;">
+        This code expires in 15 minutes.<br>
+        If you didn't request this, you can safely ignore this email.
+      </p>
+    </div>
+  `;
+  
+  await sendEmail({
+    to: email,
+    subject,
+    text: `Your verification code is: ${verificationCode}\n\nThis code expires in 15 minutes.`,
+    html: emailHtml
+  });
+  
+  return verificationCode;
 }
 
 const rateLimits = new Map();
@@ -323,65 +422,6 @@ function formatTextToHtml(text) {
     .join('\n');
 }
 
-/**
- * Create a verification code and send it via email
- * @param {string} handle - User's handle
- * @param {string} email - User's email
- * @param {string} purpose - 'signup' or 'login' to customize the email
- * @returns {Promise<string>} The generated verification code
- */
-async function sendOTPEmail(handle, email, purpose = 'signup') {
-
-  console.log("sendOTPEmail", handle, email, purpose);
-
-  // Generate verification code and set expiration (15 minutes)
-  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-  
-  // Store in pending_signups
-  await pool.query(
-    'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
-    [handle, email, verificationCode, expiresAt]
-  );
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`Verification code for ${purpose}: ${handle}, ${email}, ${verificationCode}`);
-  }
-  
-  // Customize email based on purpose
-  const title = purpose === 'signup' 
-    ? 'Complete your signup for maxua.com'
-    : 'Log in to maxua.com';
-    
-  const subject = purpose === 'signup'
-    ? 'Your verification code'
-    : 'Your login verification code';
-  
-  // Send verification email
-  const emailHtml = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>${title}</h2>
-      <p>Your verification code is:</p>
-      <div style="font-size: 24px; font-weight: bold; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; letter-spacing: 4px;">
-        ${verificationCode}
-      </div>
-      <p style="color: #666; font-size: 14px; margin-top: 20px;">
-        This code expires in 15 minutes.<br>
-        If you didn't request this, you can safely ignore this email.
-      </p>
-    </div>
-  `;
-  
-  await sendEmail({
-    to: email,
-    subject,
-    text: `Your verification code is: ${verificationCode}\n\nThis code expires in 15 minutes.`,
-    html: emailHtml
-  });
-  
-  return verificationCode;
-}
-
 module.exports = { 
   pool, 
   wrap, 
@@ -398,6 +438,7 @@ module.exports = {
   isDevEnvironment,
   captureError,
   authMiddleware,
+  authPageRedirectMiddleware,
   rateLimiterMiddleware,
   closePool
 };
