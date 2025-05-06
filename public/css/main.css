@@ -263,6 +263,25 @@ footer {
   color: var(--color-secondary-text);
 }
 
+
+.open-source-note {
+  margin-top: 0.2rem;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.open-source-note a {
+  color: var(--color-secondary);
+  font-weight: 500;
+}
+
+.open-source-note a:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+
 .subscription-message {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
@@ -877,6 +896,7 @@ textarea#post-content {
   transform: scale(1.05);
   box-shadow: 0 0 0 4px yellow, 0 0 15px rgba(26, 115, 232, 0.5);
 }
+
 
 /* ========================================================================== */
 /* RESPONSIVE DESIGN                                                          */

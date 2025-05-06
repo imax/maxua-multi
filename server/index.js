@@ -84,6 +84,10 @@ app.get('/', (req, res) => {
   }
 });
 
+app.get('/signup', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/signup.html'));
+});
+
 app.get(['/signup', '/discover'], (req, res) => {
   res.status(200).send('<code>Not yet ;)</code>');
 });

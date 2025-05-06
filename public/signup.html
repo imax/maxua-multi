@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Start your own microblog</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    .signup-container {
+      max-width: 400px;
+      margin: 3rem auto;
+      padding: 0 1rem;
+    }
+    
+    .signup-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .signup-header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .signup-header p {
+      color: var(--color-secondary-text);
+    }
+    
+    .signup-form {
+      background-color: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-field {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-field label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+    
+    .form-field .help-text {
+      font-size: 0.85rem;
+      color: var(--color-secondary-text);
+      margin-bottom: 0.5rem;
+    }
+    
+    .form-field input,
+    .form-field textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    
+    .form-field textarea {
+      height: 80px;
+      resize: vertical;
+    }
+    
+    .form-field input:focus,
+    .form-field textarea:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+    
+    .signup-button {
+      background-color: var(--color-accent);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    
+    .signup-button:hover {
+      background-color: var(--color-accent-hover);
+    }
+    
+    .signup-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .status-message {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 4px;
+      display: none;
+    }
+    
+    .status-message.error {
+      background-color: #ffebee;
+      color: #c62828;
+      display: block;
+    }
+    
+    .status-message.success {
+      background-color: #e6f7e6;
+      color: #2e7d32;
+      display: block;
+    }
+    
+    .url-preview {
+      font-family: 'Courier New', monospace;
+      background-color: #f5f5f5;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      color: var(--color-accent);
+    }
+  </style>
+</head>
+<body>
+  <main class="signup-container">
+    <div class="signup-header">
+      <h1>Start writing</h1>
+      <p>Create your own microblog in seconds</p>
+    </div>
+    
+    <form 
+      class="signup-form"
+      x-data="{
+        handle: '',
+        bio: '',
+        email: '',
+        loading: false,
+        status: '',
+        statusType: '',
+        
+        get urlPreview() {
+          return this.handle ? 
+            `${window.location.host}/${this.handle.toLowerCase()}` : 
+            `${window.location.host}/your-handle`;
+        },
+        
+        validateHandle() {
+          if (!this.handle) return false;
+          // Only allow lowercase, numbers, hyphens and underscores
+          return /^[a-z0-9_-]+$/.test(this.handle);
+        },
+        
+        async submitForm() {
+          if (!this.validateHandle()) {
+            this.status = 'Handle can only contain lowercase letters, numbers, hyphens and underscores';
+            this.statusType = 'error';
+            return;
+          }
+          
+          this.loading = true;
+          this.status = '';
+          
+          try {
+            const response = await fetch('/api/signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                handle: this.handle.toLowerCase(),
+                bio: this.bio,
+                email: this.email
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+              this.status = 'Account created! Redirecting to your new microblog...';
+              this.statusType = 'success';
+              // Redirect after a moment
+              setTimeout(() => {
+                window.location.href = `/${this.handle.toLowerCase()}`;
+              }, 1500);
+            } else {
+              this.status = result.error || 'Something went wrong. Please try again.';
+              this.statusType = 'error';
+            }
+          } catch (error) {
+            this.status = 'Unable to connect. Please check your connection and try again.';
+            this.statusType = 'error';
+          } finally {
+            this.loading = false;
+          }
+        }
+      }"
+      @submit.prevent="submitForm"
+    >
+      <div class="form-field">
+        <label for="handle">Handle</label>
+        <input type="text" id="handle" x-model="handle" 
+        placeholder="mickey7" required>
+      </div>
+      
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input type="email" id="email" x-model="email"required>
+      </div>
+      
+      <div class="form-field">
+        <label for="bio">One liner about you--don't worry, you can change it later</label>
+        <textarea id="bio" x-model="bio" placeholder="Love space
+                      exploration and dangerous missions"></textarea>
+      </div>
+      
+      <button type="submit" class="signup-button" :disabled="loading">
+        <span x-text="loading ? 'Creating account...' : 'Sign up'"></span>
+      </button>
+      
+      <div class="status-message" :class="statusType" x-show="status" x-text="status"></div>
+    </form>
+  </main>
+  
+  <footer>
+    <div class="open-source-note">
+      <p>Built with Claude. <a href="https://github.com/imax/maxua-multi">Join us on GitHub</a>.</p>
+    </div>
+  </footer>
+</body>
+</html>
