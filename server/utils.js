@@ -62,20 +62,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-// Add a keep-alive mechanism
-setInterval(async () => {
-  try {
-    const client = await pool.connect()
-    try {
-      await client.query('SELECT 1') // Keep connection warm
-    } finally {
-      client.release()
-    }
-  } catch (err) {
-    console.error('Error during keep-alive ping', err)
-  }
-}, 60000) // Every minute
-
 const rateLimits = new Map();
 
 function rateLimit(key, limit = 5, windowMs = 60000) {
