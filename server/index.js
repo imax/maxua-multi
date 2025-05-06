@@ -93,6 +93,51 @@ app.get(['/signup', '/discover'], (req, res) => {
   res.status(200).send('<code>Not yet ;)</code>');
 });
 
+app.get('/test-auth', async (req, res) => {
+  const sessionId = req.cookies?.session;
+  
+  const response = {
+    sessionCookie: sessionId || null,
+    authenticated: false,
+    user: null,
+    session: null,
+    error: null
+  };
+  
+  if (sessionId) {
+    try {
+      const result = await pool.query(
+        `SELECT s.*, u.handle, u.email 
+         FROM sessions s 
+         JOIN users u ON s.user_id = u.id 
+         WHERE s.id = $1`,
+        [sessionId]
+      );
+      
+      if (result.rows[0]) {
+        const session = result.rows[0];
+        response.authenticated = new Date(session.expires_at) > new Date();
+        response.user = {
+          id: session.user_id,
+          handle: session.handle,
+          email: session.email
+        };
+        response.session = {
+          id: session.id,
+          createdAt: session.created_at,
+          expiresAt: session.expires_at,
+          deviceInfo: session.device_info,
+          isExpired: new Date(session.expires_at) <= new Date()
+        };
+      }
+    } catch (error) {
+      response.error = error.message;
+    }
+  }
+  
+  res.json(response);
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
