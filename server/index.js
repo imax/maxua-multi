@@ -84,6 +84,7 @@ app.get('/', (req, res) => {
   }
 });
 
+
 app.get('/signup', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/signup.html'));
 });
@@ -122,6 +123,9 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).send(`<h1>500 - Server Error</h1><p>${err.message || 'Something went wrong'}</p>`);
 });
+
+const signupRoutes = require('./routes/signup');
+app.use('/api/signup', signupRoutes);
 
 // Mount the route modules
 app.use('/api/auth', authRoutes);

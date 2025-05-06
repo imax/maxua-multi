@@ -104,12 +104,14 @@
     .status-message.error {
       background-color: #ffebee;
       color: #c62828;
-      display: block;
     }
     
     .status-message.success {
       background-color: #e6f7e6;
       color: #2e7d32;
+    }
+    
+    .status-message:not([style*="display: none"]) {
       display: block;
     }
     
@@ -120,6 +122,7 @@
       border-radius: 4px;
       margin-top: 0.5rem;
       color: var(--color-accent);
+      font-size: 0.9rem;
     }
   </style>
 </head>
@@ -130,20 +133,73 @@
       <p>Create your own microblog in seconds</p>
     </div>
     
-    <form 
-      class="signup-form"
-      x-data="{
+    <div x-data="signupForm()">
+      <form 
+         name="signupForm"
+        class="signup-form"
+        @submit.prevent="handleSubmit()"
+      >
+        <div x-show="!showVerification">
+          <div class="form-field">
+            <label for="handle">Your handle</label>
+            <input type="text" id="handle" x-model="handle" 
+                   placeholder="mickey7" required>
+            <div class="url-preview" x-text="urlPreview"></div>
+          </div>
+          
+          <div class="form-field">
+            <label for="email">Email</label>
+            <input type="email" id="email" x-model="email" required>
+          </div>
+        </div>
+        
+        <div x-show="showVerification">
+          <div class="form-field">
+            <label for="code">Verification Code</label>
+            <div class="help-text">Enter the 6-digit code sent to your email</div>
+            <input type="text" id="verification-code"
+                         name="verification-code" x-model="verificationCode" 
+                   placeholder="123456" maxlength="6" pattern="[0-9]{6}" required>
+          </div>
+        </div>
+        
+        <button type="submit" class="signup-button" :disabled="loading">
+          <span x-text="buttonText"></span>
+        </button>
+        
+        <div class="status-message" :class="statusType" x-show="status" x-text="status" x-transition></div>
+      </form>
+    </div>
+  </main>
+  
+  <footer>
+    <div style="text-align: center; padding: 2rem 1rem; color: var(--color-secondary-text);">
+      <p>Built with Claude. <a href="https://github.com/imax/maxua-multi" style="color: var(--color-secondary-text);">Join us on GitHub</a>.</p>
+    </div>
+  </footer>
+  
+  <script>
+    function signupForm() {
+      return {
         handle: '',
-        bio: '',
         email: '',
+        verificationCode: '',
         loading: false,
         status: '',
         statusType: '',
+        showVerification: false,
         
         get urlPreview() {
           return this.handle ? 
             `${window.location.host}/${this.handle.toLowerCase()}` : 
             `${window.location.host}/your-handle`;
+        },
+        
+        get buttonText() {
+          if (this.loading) {
+            return this.showVerification ? 'Verifying...' : 'Sending code...';
+          }
+          return this.showVerification ? 'Verify & Create Account' : 'Send Verification Code';
         },
         
         validateHandle() {
@@ -152,9 +208,28 @@
           return /^[a-z0-9_-]+$/.test(this.handle);
         },
         
-        async submitForm() {
+        validateEmail() {
+          if (!this.email) return false;
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
+        },
+        
+        async handleSubmit() {
+          if (this.showVerification) {
+            await this.submitVerification();
+          } else {
+            await this.submitInitial();
+          }
+        },
+        
+        async submitInitial() {
           if (!this.validateHandle()) {
             this.status = 'Handle can only contain lowercase letters, numbers, hyphens and underscores';
+            this.statusType = 'error';
+            return;
+          }
+          
+          if (!this.validateEmail()) {
+            this.status = 'Please enter a valid email address';
             this.statusType = 'error';
             return;
           }
@@ -168,7 +243,6 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 handle: this.handle.toLowerCase(),
-                bio: this.bio,
                 email: this.email
               })
             });
@@ -176,12 +250,9 @@
             const result = await response.json();
             
             if (response.ok) {
-              this.status = 'Account created! Redirecting to your new microblog...';
+              this.status = 'Verification code sent! Check your email and enter it below.';
               this.statusType = 'success';
-              // Redirect after a moment
-              setTimeout(() => {
-                window.location.href = `/${this.handle.toLowerCase()}`;
-              }, 1500);
+              this.showVerification = true;
             } else {
               this.status = result.error || 'Something went wrong. Please try again.';
               this.statusType = 'error';
@@ -192,39 +263,51 @@
           } finally {
             this.loading = false;
           }
+        },
+        
+        async submitVerification() {
+          if (!this.verificationCode || this.verificationCode.length !== 6) {
+            this.status = 'Please enter the 6-digit verification code';
+            this.statusType = 'error';
+            return;
+          }
+          
+          this.loading = true;
+          this.status = '';
+          
+          try {
+            const response = await fetch('/api/signup/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                handle: this.handle.toLowerCase(),
+                email: this.email,
+                code: this.verificationCode
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+              this.status = 'Account created! Redirecting to your new microblog...';
+              this.statusType = 'success';
+              // Redirect after a moment
+              setTimeout(() => {
+                window.location.href = `/${result.handle}`;
+              }, 1500);
+            } else {
+              this.status = result.error || 'Invalid code. Please try again.';
+              this.statusType = 'error';
+            }
+          } catch (error) {
+            this.status = 'Unable to connect. Please check your connection and try again.';
+            this.statusType = 'error';
+          } finally {
+            this.loading = false;
+          }
         }
-      }"
-      @submit.prevent="submitForm"
-    >
-      <div class="form-field">
-        <label for="handle">Handle</label>
-        <input type="text" id="handle" x-model="handle" 
-        placeholder="mickey7" required>
-      </div>
-      
-      <div class="form-field">
-        <label for="email">Email</label>
-        <input type="email" id="email" x-model="email"required>
-      </div>
-      
-      <div class="form-field">
-        <label for="bio">One liner about you--don't worry, you can change it later</label>
-        <textarea id="bio" x-model="bio" placeholder="Love space
-                      exploration and dangerous missions"></textarea>
-      </div>
-      
-      <button type="submit" class="signup-button" :disabled="loading">
-        <span x-text="loading ? 'Creating account...' : 'Sign up'"></span>
-      </button>
-      
-      <div class="status-message" :class="statusType" x-show="status" x-text="status"></div>
-    </form>
-  </main>
-  
-  <footer>
-    <div class="open-source-note">
-      <p>Built with Claude. <a href="https://github.com/imax/maxua-multi">Join us on GitHub</a>.</p>
-    </div>
-  </footer>
+      }
+    }
+  </script>
 </body>
 </html>
