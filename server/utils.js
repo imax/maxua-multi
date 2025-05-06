@@ -52,6 +52,38 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+// server/utils.js - add session creation function
+const { v4: uuidv4 } = require('uuid');
+
+/**
+ * Create a session for a user and set the cookie
+ * @param {number} userId - The user ID
+ * @param {Response} res - The Express response object
+ * @param {string} deviceInfo - Information about the device
+ * @returns {Promise<string>} The session ID
+ */
+async function createSession(userId, res, deviceInfo = 'Unknown device') {
+  const sessionId = uuidv4();
+  const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
+  
+  // Insert session into database
+  await pool.query(
+    'INSERT INTO sessions (id, user_id, expires_at, device_info) VALUES ($1, $2, $3, $4)',
+    [sessionId, userId, expiresAt, deviceInfo]
+  );
+  
+  // Set HttpOnly cookie
+  res.cookie('session', sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    expires: expiresAt,
+    sameSite: 'lax',
+    path: '/'
+  });
+  
+  return sessionId;
+}
+
 const rateLimits = new Map();
 
 function rateLimit(key, limit = 5, windowMs = 60000) {
@@ -296,6 +328,7 @@ module.exports = {
   pool, 
   wrap, 
   sendEmail,
+  createSession,
   rateLimit,
   getCorsHeaders, 
   getETagHeaders,

@@ -1,7 +1,7 @@
 // server/routes/signup.js
 const express = require('express');
 const router = express.Router();
-const { pool, rateLimiterMiddleware, sendEmail } = require('../utils');
+const { pool, rateLimiterMiddleware, sendEmail, createSession } = require('../utils');
 
 // Generate a 6-digit verification code
 function generateVerificationCode() {
@@ -154,29 +154,14 @@ router.post('/verify', rateLimiterMiddleware, async (req, res) => {
       
       await client.query('COMMIT');
 
-      // Create session for the new user
+
       const userResult = await pool.query(
         'SELECT id FROM users WHERE handle = $1',
         [normalizedHandle]
       );
       
       const userId = userResult.rows[0].id;
-      const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
-      const sessionId = uuidv4();
-      
-      await pool.query(
-        'INSERT INTO sessions (id, user_id, expires_at, device_info) VALUES ($1, $2, $3, $4)',
-        [sessionId, userId, expiresAt, 'Signup device']
-      );
-      
-      // Set cookie
-      res.cookie('session', sessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires: expiresAt,
-        sameSite: 'lax',
-        path: '/'
-      });
+      await createSession(userId, res, 'Signup device');
       
       // Return success with the handle to redirect
       return res.json({ 

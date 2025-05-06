@@ -1,7 +1,7 @@
 // server/routes/auth.js
 const express = require('express');
 const router = express.Router();
-const { pool, rateLimiterMiddleware } = require('../utils');
+const { pool, rateLimiterMiddleware, createSession } = require('../utils');
 const { v4: uuidv4 } = require('uuid');
 
 // Login route - uses the existing signup verification or can be standalone
@@ -40,32 +40,11 @@ router.post('/login', rateLimiterMiddleware, async (req, res) => {
     }
     
     // Create session
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
-    const sessionId = uuidv4();
-    
-    await pool.query(
-      'INSERT INTO sessions (id, user_id, expires_at, device_info) VALUES ($1, $2, $3, $4)',
-      [sessionId, userId, expiresAt, req.body.deviceInfo || 'Unknown']
-    );
-    
-    // Set HttpOnly cookie
-    res.cookie('session', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      expires: expiresAt,
-      sameSite: 'lax',
-      path: '/'
-    });
-    
-    // Get user handle for response
-    const userResult = await pool.query(
-      'SELECT handle FROM users WHERE id = $1',
-      [userId]
-    );
+    await createSession(userId, res, req.body.deviceInfo || 'Login device');
     
     return res.json({ 
       success: true, 
-      handle: userResult.rows[0].handle 
+      handle: handle
     });
   } catch (error) {
     console.error('Error in login:', error);
