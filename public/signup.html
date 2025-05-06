@@ -52,8 +52,7 @@
       margin-bottom: 0.5rem;
     }
     
-    .form-field input,
-    .form-field textarea {
+    .form-field input {
       width: 100%;
       padding: 0.75rem;
       border: 1px solid #ddd;
@@ -61,13 +60,7 @@
       font-size: 1rem;
     }
     
-    .form-field textarea {
-      height: 80px;
-      resize: vertical;
-    }
-    
-    .form-field input:focus,
-    .form-field textarea:focus {
+    .form-field input:focus {
       outline: none;
       border-color: var(--color-accent);
       box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
@@ -111,7 +104,7 @@
       color: #2e7d32;
     }
     
-    .status-message:not([style*="display: none"]) {
+    .status-message.show {
       display: block;
     }
     
@@ -124,6 +117,10 @@
       color: var(--color-accent);
       font-size: 0.9rem;
     }
+    
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -134,32 +131,25 @@
     </div>
     
     <div x-data="signupForm()">
-      <form 
-         name="signupForm"
-        class="signup-form"
-        @submit.prevent="handleSubmit()"
-      >
-        <div x-show="!showVerification">
+      <form class="signup-form" @submit.prevent="handleSubmit()">
+        <div :class="{ 'hidden': showVerification }">
           <div class="form-field">
-            <label for="handle">Your handle</label>
-            <input type="text" id="handle" x-model="handle" 
-                   placeholder="mickey7" required>
+            <label for="user-handle">Your handle</label>
+            <input type="text" id="user-handle" x-model="handle" placeholder="mickey7">
             <div class="url-preview" x-text="urlPreview"></div>
           </div>
           
           <div class="form-field">
-            <label for="email">Email</label>
-            <input type="email" id="email" x-model="email" required>
+            <label for="user-email">Email</label>
+            <input type="email" id="user-email" x-model="email">
           </div>
         </div>
         
-        <div x-show="showVerification">
+        <div :class="{ 'hidden': !showVerification }">
           <div class="form-field">
-            <label for="code">Verification Code</label>
+            <label for="verify-code">Verification Code</label>
             <div class="help-text">Enter the 6-digit code sent to your email</div>
-            <input type="text" id="verification-code"
-                         name="verification-code" x-model="verificationCode" 
-                   placeholder="123456" maxlength="6" pattern="[0-9]{6}" required>
+            <input type="text" id="verify-code" x-model="verificationCode" placeholder="123456">
           </div>
         </div>
         
@@ -167,7 +157,7 @@
           <span x-text="buttonText"></span>
         </button>
         
-        <div class="status-message" :class="statusType" x-show="status" x-text="status" x-transition></div>
+        <div class="status-message" :class="[statusType, { 'show': status }]" x-text="status"></div>
       </form>
     </div>
   </main>
@@ -203,14 +193,19 @@
         },
         
         validateHandle() {
-          if (!this.handle) return false;
-          // Only allow lowercase, numbers, hyphens and underscores
-          return /^[a-z0-9_-]+$/.test(this.handle);
+          if (!this.handle) return { valid: false, message: 'Handle is required' };
+          if (!/^[a-z0-9_-]+$/.test(this.handle)) {
+            return { valid: false, message: 'Handle can only contain lowercase letters, numbers, hyphens and underscores' };
+          }
+          return { valid: true };
         },
         
         validateEmail() {
-          if (!this.email) return false;
-          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email);
+          if (!this.email) return { valid: false, message: 'Email is required' };
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
+            return { valid: false, message: 'Please enter a valid email address' };
+          }
+          return { valid: true };
         },
         
         async handleSubmit() {
@@ -222,14 +217,16 @@
         },
         
         async submitInitial() {
-          if (!this.validateHandle()) {
-            this.status = 'Handle can only contain lowercase letters, numbers, hyphens and underscores';
+          const handleValidation = this.validateHandle();
+          if (!handleValidation.valid) {
+            this.status = handleValidation.message;
             this.statusType = 'error';
             return;
           }
           
-          if (!this.validateEmail()) {
-            this.status = 'Please enter a valid email address';
+          const emailValidation = this.validateEmail();
+          if (!emailValidation.valid) {
+            this.status = emailValidation.message;
             this.statusType = 'error';
             return;
           }

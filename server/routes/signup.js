@@ -23,7 +23,7 @@ router.get('/check-handle/:handle', rateLimiterMiddleware, async (req, res) => {
     // Check if handle is already taken
     const [userCheck, pendingCheck] = await Promise.all([
       pool.query('SELECT 1 FROM users WHERE handle = $1', [handle]),
-      pool.query('SELECT 1 FROM pending_users WHERE handle = $1 AND expires_at > NOW()', [handle])
+      pool.query('SELECT 1 FROM pending_signups WHERE handle = $1 AND expires_at > NOW()', [handle])
     ]);
     
     const isAvailable = userCheck.rows.length === 0 && pendingCheck.rows.length === 0;
@@ -57,7 +57,7 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
     // Check if handle or email is already taken
     const [userCheck, pendingCheck] = await Promise.all([
       pool.query('SELECT 1 FROM users WHERE handle = $1 OR email = $2', [normalizedHandle, email]),
-      pool.query('SELECT 1 FROM pending_users WHERE (handle = $1 OR email = $2) AND expires_at > NOW()', [normalizedHandle, email])
+      pool.query('SELECT 1 FROM pending_signups WHERE (handle = $1 OR email = $2) AND expires_at > NOW()', [normalizedHandle, email])
     ]);
     
     if (userCheck.rows.length > 0) {
@@ -72,9 +72,9 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
     const verificationCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     
-    // Store in pending_users
+    // Store in pending_signups
     await pool.query(
-      'INSERT INTO pending_users (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
       [normalizedHandle, email, verificationCode, expiresAt]
     );
     
@@ -124,7 +124,7 @@ router.post('/verify', rateLimiterMiddleware, async (req, res) => {
     
     // Find pending user with matching code
     const result = await pool.query(
-      'SELECT * FROM pending_users WHERE handle = $1 AND email = $2 AND verification_code = $3 AND expires_at > NOW()',
+      'SELECT * FROM pending_signups WHERE handle = $1 AND email = $2 AND verification_code = $3 AND expires_at > NOW()',
       [normalizedHandle, email, code]
     );
     
@@ -146,7 +146,7 @@ router.post('/verify', rateLimiterMiddleware, async (req, res) => {
       
       // Delete the pending user record
       await client.query(
-        'DELETE FROM pending_users WHERE handle = $1 AND email = $2',
+        'DELETE FROM pending_signups WHERE handle = $1 AND email = $2',
         [normalizedHandle, email]
       );
       
