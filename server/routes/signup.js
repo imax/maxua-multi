@@ -83,7 +83,7 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
     // Send verification email
     const emailHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Complete your microblog setup</h2>
+        <h2>Complete your signup for maxua.com</h2>
         <p>Your verification code is:</p>
         <div style="font-size: 24px; font-weight: bold; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; letter-spacing: 4px;">
           ${verificationCode}
@@ -97,7 +97,7 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
     
     await sendEmail({
       to: email,
-      subject: 'Your verification code for your new microblog',
+      subject: 'Your verification code',
       text: `Your verification code is: ${verificationCode}\n\nThis code expires in 15 minutes.`,
       html: emailHtml
     });
