@@ -219,11 +219,6 @@ app.get('/:page.html', (req, res, next) => {
   });
 });
 
-// Special case for root-level admin and other pages
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/admin.html'));
-});
-
 // Create adapter for SSR page handlers
 function createServerlessAdapter(pageHandler) {
   return async (req, res) => {
