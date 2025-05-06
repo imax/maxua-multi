@@ -291,7 +291,7 @@
               this.statusType = 'success';
               // Redirect after a moment
               setTimeout(() => {
-                window.location.href = `/${result.handle}`;
+                window.location.href = `/welcome?handle=${result.handle}`;
               }, 1500);
             } else {
               this.status = result.error || 'Invalid code. Please try again.';
