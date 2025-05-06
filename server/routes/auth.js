@@ -1,136 +1,128 @@
-// routes/auth.js
+// server/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const { pool, rateLimiterMiddleware } = require('../utils');
+const { v4: uuidv4 } = require('uuid');
 
-// Login route
-router.post('/', rateLimiterMiddleware, async (req, res) => {
+// Login route - uses the existing signup verification or can be standalone
+router.post('/login', rateLimiterMiddleware, async (req, res) => {
   try {
-    const { password, deviceInfo } = req.body;
-    const expectedPassword = process.env.ADMIN_PASSWORD;
+    const { handle, email, code } = req.body;
     
-    if (!expectedPassword) {
-      return res.status(500).json({ error: 'Missing ADMIN_PASSWORD environment variable' });
+    let userId;
+    
+    // If code is provided, it's from the signup flow
+    if (code) {
+      // Check pending signup with code
+      const pendingResult = await pool.query(
+        'SELECT * FROM pending_signups WHERE (handle = $1 OR email = $2) AND verification_code = $3 AND expires_at > NOW()',
+        [handle, email, code]
+      );
+      
+      if (!pendingResult.rows[0]) {
+        return res.status(401).json({ error: 'Invalid or expired code' });
+      }
+      
+      // Get the user ID (should exist after verification)
+      const userResult = await pool.query(
+        'SELECT id FROM users WHERE handle = $1 OR email = $2',
+        [handle, email]
+      );
+      
+      if (!userResult.rows[0]) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      
+      userId = userResult.rows[0].id;
+    } else {
+      // For future: other login methods (email/password, etc.)
+      return res.status(400).json({ error: 'Login method not implemented' });
     }
     
-    if (password !== expectedPassword) {
-      return res.status(401).json({ success: false, error: 'Invalid password' });
-    }
+    // Create session
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
+    const sessionId = uuidv4();
     
-    // Create a new session
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
-    
-    const result = await pool.query(
-      'INSERT INTO sessions (expires_at, device_info) VALUES ($1, $2) RETURNING id',
-      [expiresAt, deviceInfo || 'Unknown']
-    );
-    
-    // Log the new session
     await pool.query(
-      'INSERT INTO activity_log(type, session_id, data) VALUES ($1, $2, $3)',
-      ['session', result.rows[0].id, { device: deviceInfo || 'Unknown' }]
+      'INSERT INTO sessions (id, user_id, expires_at, device_info) VALUES ($1, $2, $3, $4)',
+      [sessionId, userId, expiresAt, req.body.deviceInfo || 'Unknown']
     );
     
     // Set HttpOnly cookie
-    const sessionId = result.rows[0].id;
-    const isDevEnvironment = process.env.NODE_ENV !== 'production';
-    const secure = !isDevEnvironment;
-    
-    res.cookie('auth_token', sessionId, {
+    res.cookie('session', sessionId, {
       httpOnly: true,
-      secure,
+      secure: process.env.NODE_ENV === 'production',
       expires: expiresAt,
-      sameSite: 'Lax',
-      path: '/',
-      domain: req.headers.host?.includes('localhost') ? undefined : '.maxua.com'
+      sameSite: 'lax',
+      path: '/'
     });
     
-    return res.json({
-      success: true,
-      sessionId,
-      expiresAt
+    // Get user handle for response
+    const userResult = await pool.query(
+      'SELECT handle FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    return res.json({ 
+      success: true, 
+      handle: userResult.rows[0].handle 
     });
   } catch (error) {
-    console.error('Error in auth:', error);
-    return res.status(500).json({ error: 'Server error', details: error.message });
+    console.error('Error in login:', error);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Verify auth status
-router.get('/', async (req, res) => {
+// Check auth status
+router.get('/me', async (req, res) => {
   try {
-    // Get session ID from cookie or query parameter for backward compatibility
-    const sessionId = req.cookies?.auth_token || req.query.sessionId;
+    const sessionId = req.cookies?.session;
     
     if (!sessionId) {
-      return res.json({ valid: false });
+      return res.json({ authenticated: false });
     }
     
-    // Check session validity in database
     const result = await pool.query(
-      'SELECT id FROM sessions WHERE id = $1 AND expires_at > NOW()',
+      `SELECT s.user_id, u.handle, u.email 
+       FROM sessions s 
+       JOIN users u ON s.user_id = u.id 
+       WHERE s.id = $1 AND s.expires_at > NOW()`,
       [sessionId]
     );
     
-    const isValid = result.rows.length > 0;
-    
-    // If session is valid but using query parameter, set a cookie for future requests
-    if (isValid && req.query.sessionId && !req.cookies?.auth_token) {
-      const sessionResult = await pool.query(
-        'SELECT expires_at FROM sessions WHERE id = $1',
-        [sessionId]
-      );
-      
-      if (sessionResult.rows.length > 0) {
-        const isDevEnvironment = process.env.NODE_ENV !== 'production';
-        const secure = !isDevEnvironment;
-        
-        res.cookie('auth_token', sessionId, {
-          httpOnly: true,
-          secure,
-          expires: new Date(sessionResult.rows[0].expires_at),
-          sameSite: 'Lax',
-          path: '/',
-          domain: req.headers.host?.includes('localhost') ? undefined : '.maxua.com'
-        });
-      }
+    if (!result.rows[0]) {
+      res.clearCookie('session');
+      return res.json({ authenticated: false });
     }
     
-    return res.json({ valid: isValid });
+    return res.json({
+      authenticated: true,
+      user: {
+        id: result.rows[0].user_id,
+        handle: result.rows[0].handle,
+        email: result.rows[0].email
+      }
+    });
   } catch (error) {
     console.error('Error checking auth:', error);
-    return res.status(500).json({ error: 'Server error', details: error.message });
+    return res.status(500).json({ error: 'Auth error' });
   }
 });
 
-// Logout/revoke sessions
-router.delete('/', async (req, res) => {
+// Logout route
+router.post('/logout', async (req, res) => {
   try {
-    const { password } = req.body;
-    const expectedPassword = process.env.ADMIN_PASSWORD;
+    const sessionId = req.cookies?.session;
     
-    if (!expectedPassword) {
-      return res.status(500).json({ error: 'Missing ADMIN_PASSWORD environment variable' });
+    if (sessionId) {
+      await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
     }
     
-    if (password !== expectedPassword) {
-      return res.status(401).json({ success: false, error: 'Invalid password' });
-    }
-    
-    // Delete all sessions
-    await pool.query('DELETE FROM sessions');
-    
-    // Clear auth cookie
-    res.clearCookie('auth_token', {
-      path: '/',
-      domain: req.headers.host?.includes('localhost') ? undefined : '.maxua.com'
-    });
-    
-    return res.json({ success: true, message: 'All sessions cleared' });
+    res.clearCookie('session');
+    return res.json({ success: true });
   } catch (error) {
     console.error('Error in logout:', error);
-    return res.status(500).json({ error: 'Server error', details: error.message });
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 
