@@ -11,10 +11,8 @@ exports.handler = async (event, context) => {
     const query = event.queryStringParameters || {};
     const draftId = query.draft || null;
     
-    // Check authentication - this is an admin-only page
-    // Now using cookie-based auth instead of sessionId
-    // XXX: leave it open until we finish transition to Node Express api
-    const isUserAuthenticated = true; //await isAuthenticated(event);
+    // XXX Check user authentication
+    const isUserAuthenticated = true; 
     
     if (!isUserAuthenticated) {
       // Redirect to the home page if not authenticated
