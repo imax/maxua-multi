@@ -135,7 +135,8 @@
         <div :class="{ 'hidden': showVerification }">
           <div class="form-field">
             <label for="user-handle">Your handle</label>
-            <input type="text" id="user-handle" x-model="handle" placeholder="mickey7">
+            <input type="text" id="user-handle" x-model="handle" placeholder="mickey7" 
+                   @input="handle = handle.toLowerCase()">
             <div class="url-preview" x-text="urlPreview"></div>
           </div>
           
@@ -181,7 +182,7 @@
         
         get urlPreview() {
           return this.handle ? 
-            `${window.location.host}/${this.handle.toLowerCase()}` : 
+            `${window.location.host}/${this.handle}` : 
             `${window.location.host}/your-handle`;
         },
         
@@ -239,7 +240,7 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                handle: this.handle.toLowerCase(),
+                handle: this.handle, // Already lowercase from input handler
                 email: this.email
               })
             });
@@ -277,7 +278,7 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                handle: this.handle.toLowerCase(),
+                handle: this.handle, // Already lowercase from input handler
                 email: this.email,
                 code: this.verificationCode
               })

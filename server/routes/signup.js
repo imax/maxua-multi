@@ -77,6 +77,8 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
       'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
       [normalizedHandle, email, verificationCode, expiresAt]
     );
+
+    console.log("pending_signups: ", normalizedHandle, email, verificationCode);
     
     // Send verification email
     const emailHtml = `

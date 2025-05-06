@@ -5,12 +5,9 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     handle VARCHAR(50) NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
     display_name TEXT,
     bio TEXT,
     avatar_url TEXT,
-    verified_at TIMESTAMPTZ,
-    reset_password_token UUID,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT valid_handle CHECK (handle ~ '^[a-z0-9_-]+$')
@@ -75,7 +72,7 @@ CREATE TABLE comments (
 
 -- Site settings table - for customization of each user's blog
 
-CREATE TABLE sites (
+CREATE TABLE profiles (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     site_name TEXT NOT NULL,
