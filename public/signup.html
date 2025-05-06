@@ -91,7 +91,6 @@
       margin-top: 1rem;
       padding: 0.75rem;
       border-radius: 4px;
-      display: none;
     }
     
     .status-message.error {
@@ -157,8 +156,8 @@
         <button type="submit" class="signup-button" :disabled="loading">
           <span x-text="buttonText"></span>
         </button>
-        
-        <div class="status-message" :class="[statusType, { 'show': status }]" x-text="status"></div>
+
+        <div class="status-message" x-show="status" :class="statusType" x-text="status"></div>
       </form>
     </div>
   </main>
@@ -240,7 +239,7 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                handle: this.handle, // Already lowercase from input handler
+                handle: this.handle,
                 email: this.email
               })
             });
