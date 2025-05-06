@@ -75,7 +75,13 @@ checkDatabaseConnection();
 setInterval(checkDatabaseConnection, 60000); // Check every minute
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/welcome.html'));
+  const host = req.headers.host;
+
+  if (host.includes('ultrathink.me')) {
+    res.sendFile(path.join(__dirname, '../public/ultrathink.html'));
+  } else {
+    res.sendFile(path.join(__dirname, '../public/welcome.html'));
+  }
 });
 
 app.get(['/signup', '/discover'], (req, res) => {
