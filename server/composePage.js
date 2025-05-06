@@ -11,7 +11,7 @@ exports.handler = async (event, context) => {
     const query = event.queryStringParameters || {};
     const draftId = query.draft || null;
     
-    // XXX Check user authentication
+    // TODO Check user authentication
     const isUserAuthenticated = true; 
     
     if (!isUserAuthenticated) {
