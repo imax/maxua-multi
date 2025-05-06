@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log In | Your microblog</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    .login-container {
+      max-width: 400px;
+      margin: 3rem auto;
+      padding: 0 1rem;
+    }
+    
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .login-header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .login-header p {
+      color: var(--color-secondary-text);
+    }
+    
+    .login-form {
+      background-color: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-field {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-field label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+    
+    .form-field .help-text {
+      font-size: 0.85rem;
+      color: var(--color-secondary-text);
+      margin-bottom: 0.5rem;
+    }
+    
+    .form-field input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    
+    .form-field input:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+    
+    .login-button {
+      background-color: var(--color-accent);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    
+    .login-button:hover {
+      background-color: var(--color-accent-hover);
+    }
+    
+    .login-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .status-message {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 4px;
+    }
+    
+    .status-message.error {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+    
+    .status-message.success {
+      background-color: #e6f7e6;
+      color: #2e7d32;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .signup-link {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--color-secondary-text);
+    }
+    
+    .signup-link a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+    
+    .signup-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <main class="login-container">
+    <div class="login-header">
+      <h1>Welcome back</h1>
+      <p>Log in to your microblog</p>
+    </div>
+    
+    <div x-data="loginForm()">
+      <form class="login-form" @submit.prevent="handleSubmit()">
+        <div :class="{ 'hidden': showVerification }">
+          <div class="form-field">
+            <label for="user-handle">Your handle</label>
+            <input type="text" id="user-handle" x-model="handle" placeholder="mickey7" 
+                   @input="handle = handle.toLowerCase()">
+          </div>
+        </div>
+        
+        <div :class="{ 'hidden': !showVerification }">
+          <div class="form-field">
+            <label for="verify-code">Verification Code</label>
+            <div class="help-text">Enter the 6-digit code sent to your email</div>
+            <input type="text" id="verify-code" x-model="verificationCode" placeholder="123456">
+          </div>
+        </div>
+        
+        <button type="submit" class="login-button" :disabled="loading">
+          <span x-text="buttonText"></span>
+        </button>
+
+        <div class="status-message" x-show="status" :class="statusType" x-text="status"></div>
+      </form>
+    </div>
+    
+    <div class="signup-link">
+      <p>Don't have an account? <a href="/signup">Sign up</a></p>
+    </div>
+  </main>
+  
+  <footer>
+    <div style="text-align: center; padding: 2rem 1rem; color: var(--color-secondary-text);">
+      <p>Built with Claude. <a href="https://github.com/imax/maxua-multi" style="color: var(--color-secondary-text);">Join us on GitHub</a>.</p>
+    </div>
+  </footer>
+  
+  <script>
+    function loginForm() {
+      return {
+        handle: '',
+        verificationCode: '',
+        loading: false,
+        status: '',
+        statusType: '',
+        showVerification: false,
+        
+        get buttonText() {
+          if (this.loading) {
+            return this.showVerification ? 'Logging in...' : 'Sending code...';
+          }
+          return this.showVerification ? 'Log In' : 'Send Login Code';
+        },
+        
+        validateHandle() {
+          if (!this.handle) return { valid: false, message: 'Handle is required' };
+          if (!/^[a-z0-9_-]+$/.test(this.handle)) {
+            return { valid: false, message: 'Handle can only contain lowercase letters, numbers, hyphens and underscores' };
+          }
+          return { valid: true };
+        },
+        
+        async handleSubmit() {
+          if (this.showVerification) {
+            await this.submitLogin();
+          } else {
+            await this.requestLoginCode();
+          }
+        },
+        
+        async requestLoginCode() {
+          const handleValidation = this.validateHandle();
+          if (!handleValidation.valid) {
+            this.status = handleValidation.message;
+            this.statusType = 'error';
+            return;
+          }
+          
+          this.loading = true;
+          this.status = '';
+          
+          try {
+            // Request a login code - we'll need to update the backend to handle this
+            const response = await fetch('/api/auth/request-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                handle: this.handle
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+              this.status = 'Login code sent! Check your email and enter it below.';
+              this.statusType = 'success';
+              this.showVerification = true;
+            } else {
+              this.status = result.error || 'Unable to send login code. Please try again.';
+              this.statusType = 'error';
+            }
+          } catch (error) {
+            this.status = 'Unable to connect. Please check your connection and try again.';
+            this.statusType = 'error';
+          } finally {
+            this.loading = false;
+          }
+        },
+        
+        async submitLogin() {
+          if (!this.verificationCode || this.verificationCode.length !== 6) {
+            this.status = 'Please enter the 6-digit verification code';
+            this.statusType = 'error';
+            return;
+          }
+          
+          this.loading = true;
+          this.status = '';
+          
+          try {
+            const response = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                handle: this.handle,
+                code: this.verificationCode
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+              this.status = 'Login successful! Redirecting...';
+              this.statusType = 'success';
+              setTimeout(() => {
+                window.location.href = `/${result.handle}`;
+              }, 1500);
+            } else {
+              this.status = result.error || 'Invalid code. Please try again.';
+              this.statusType = 'error';
+            }
+          } catch (error) {
+            this.status = 'Unable to connect. Please check your connection and try again.';
+            this.statusType = 'error';
+          } finally {
+            this.loading = false;
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>
