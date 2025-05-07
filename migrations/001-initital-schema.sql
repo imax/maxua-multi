@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS migrations (
 CREATE INDEX idx_posts_user_id ON posts(user_id);
 CREATE INDEX idx_posts_topic_id ON posts(topic_id);
 CREATE INDEX idx_posts_status ON posts(status);
+CREATE INDEX posts_slug_idx ON posts(slug);
 CREATE INDEX idx_topics_user_id ON topics(user_id);
 CREATE INDEX idx_subscribers_user_id ON subscribers(user_id);
 CREATE INDEX idx_subscribers_email ON subscribers(email);
