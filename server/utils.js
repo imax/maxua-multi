@@ -133,8 +133,6 @@ async function createSession(userId, res, deviceInfo = 'Unknown device') {
  */
 async function sendOTPEmail(handle, email, purpose = 'signup') {
 
-  console.log("sendOTPEmail", handle, email, purpose);
-
   // Generate verification code and set expiration (15 minutes)
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -167,17 +165,31 @@ async function sendOTPEmail(handle, email, purpose = 'signup') {
   
   // Send verification email
   const emailHtml = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>${title}</h2>
-      <p>Your verification code is:</p>
-      <div style="font-size: 24px; font-weight: bold; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; letter-spacing: 4px;">
-        ${verificationCode}
-      </div>
-      <p style="color: #666; font-size: 14px; margin-top: 20px;">
-        This code expires in 15 minutes.<br>
-        If you didn't request this, you can safely ignore this email.
-      </p>
-    </div>
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0; padding: 0;">
+    <tr>
+      <td align="left" valign="top" style="padding: 0;">
+        <div style="max-width: 600px; margin: 0; padding: 0;">
+          
+          <h2 style="margin: 0 0 20px 0; font-size: 19px; color: #333; text-align: left;">${title}</h2>
+          
+          <p style="margin: 0 0 20px 0; font-size: 16px; color: #333; text-align: left;">Your verification code is:</p>
+          
+          <div style="margin: 0 0 20px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 4px;">
+            ${verificationCode}
+          </div>
+          
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #666; text-align: left;">
+            This code expires in 15 minutes.
+          </p>
+          
+          <p style="margin: 0; font-size: 14px; color: #666; text-align: left;">
+            If you didn't request this, you can safely ignore this email.
+          </p>
+          
+        </div>
+      </td>
+    </tr>
+  </table>
   `;
   
   await sendEmail({
