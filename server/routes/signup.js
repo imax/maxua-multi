@@ -5,13 +5,14 @@ const { pool, rateLimiterMiddleware, createSession, sendOTPEmail } = require('..
 
 // List of reserved handles that cannot be used by users
 const RESERVED_HANDLES = [
-  'admin', 'about', 'login', 'logout', 'signup', 'api', 
+  'admin', 'about', 'login', 'logout', 'signup', 
   'compose', 'settings', 'profile', 'discover', 'search',
-  'explore', 'dashboard', 't', 'p', 'help', 'support',
-  'privacy', 'terms', 'tos', 'reset', 'password', 'blog',
-  'tag', 'tags', 'topic', 'topics', 'post', 'posts',
-  'feed', 'rss', 'xml', 'sitemap', 'robots', 'static',
-  'public', 'assets', 'images', 'css', 'js', 'img'
+  'explore', 'dashboard', 'help', 'support',
+  'privacy', 'terms', 'reset', 'password', 'blog',
+  'tags', 'topic', 'topics', 'post', 'posts',
+  'feed', 'sitemap', 'robots', 'static',
+  'public', 'assets', 'images'
+  // no need to add anything shorter than 4 characters
 ];
 
 // Initial signup - send verification code
