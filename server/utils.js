@@ -138,8 +138,15 @@ async function sendOTPEmail(handle, email, purpose = 'signup') {
   // Generate verification code and set expiration (15 minutes)
   const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  // Allow multiple verification code requests for the same user
+  // for this delete any pending signup codes for email/handle combo
+  await pool.query(
+    'DELETE FROM pending_signups WHERE handle = $1 OR email = $2',
+    [handle, email]
+  );
   
-  // Store in pending_signups
+  // Then insert the new one
   await pool.query(
     'INSERT INTO pending_signups (handle, email, verification_code, expires_at) VALUES ($1, $2, $3, $4)',
     [handle, email, verificationCode, expiresAt]
