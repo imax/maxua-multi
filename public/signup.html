@@ -307,7 +307,7 @@
               this.statusType = 'success';
               // Redirect after a moment
               setTimeout(() => {
-                window.location.href = `/onboarding`;
+                window.location.href = `/${result.handle}?welcome`;
               }, 1500);
             } else {
               this.status = result.error || 'Invalid code. Please try again.';

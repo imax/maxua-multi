@@ -18,6 +18,11 @@ const RESERVED_HANDLES = [
 router.get('/check-handle/:handle', rateLimiterMiddleware, async (req, res) => {
   try {
     const handle = req.params.handle.toLowerCase();
+
+    // Check minimum length
+    if (normalizedHandle.length < 4) {
+      return res.status(400).json({ error: 'Handle must be at least 4 characters long' });
+    }
     
     // Check if handle is valid format
     if (!/^[a-z0-9_-]+$/.test(handle)) {
@@ -52,6 +57,11 @@ router.post('/', rateLimiterMiddleware, async (req, res) => {
     }
     
     const normalizedHandle = handle.toLowerCase();
+
+    // Check minimum length
+    if (normalizedHandle.length < 4) {
+      return res.status(400).json({ error: 'Handle must be at least 4 characters long' });
+    }
     
     // Check if handle is valid format
     if (!/^[a-z0-9_-]+$/.test(normalizedHandle)) {
